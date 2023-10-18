@@ -4,38 +4,54 @@ import java.math.BigDecimal;
 
 public class Jdk11Example {
 
-    interface IndividualTrade {
+    private interface Security {
 
-        class AmountBased implements IndividualTrade {
-            private final BigDecimal amountRequested;
+        class ExchangeListed implements Security{
+            private final String tickerSymbol;
+            private final Exchange primaryExchange;
 
-            public AmountBased(BigDecimal amountRequested) {
-                this.amountRequested = amountRequested;
+            public ExchangeListed(String tickerSymbol, Exchange primaryExchange) {
+                this.tickerSymbol = tickerSymbol;
+                this.primaryExchange = primaryExchange;
+            }
+
+            public String getTickerSymbol() {
+                return tickerSymbol;
+            }
+
+            public Exchange getPrimaryExchange() {
+                return primaryExchange;
             }
         }
 
-        class ShareBased implements IndividualTrade {
+        class MutualFund implements Security {
 
-            private final BigDecimal sharesRequested;
-            private final BigDecimal executionPrice;
+            private final Cusip cusip;
 
-            public ShareBased(BigDecimal sharesRequested,
-                              BigDecimal executionPrice) {
-                this.sharesRequested = sharesRequested;
-                this.executionPrice = executionPrice;
+            public MutualFund(Cusip cusip) {
+                this.cusip = cusip;
+            }
+
+            public Cusip getCusip() {
+                return cusip;
             }
         }
     }
 
-    public static BigDecimal calculateNotionalValue(IndividualTrade individualTrade) {
-        if (individualTrade instanceof IndividualTrade.AmountBased) {
-            IndividualTrade.AmountBased amountBased = (IndividualTrade.AmountBased) individualTrade;
-            return amountBased.amountRequested;
+    public BigDecimal getPrice(Security security) {
+        if (security instanceof Security.ExchangeListed) {
+            Security.ExchangeListed exchangeListed = (Security.ExchangeListed) security;
+
+            return IntradayPriceRetriever.retrieveIntradayPrice(
+                    exchangeListed.getTickerSymbol(),
+                    exchangeListed.getPrimaryExchange()
+            );
+        } else if (security instanceof Security.MutualFund) {
+            Security.MutualFund mutualFund = (Security.MutualFund) security;
+
+            return MutualFundPriceRetriever.retrieveClosingPrice(mutualFund.getCusip());
         }
-        else if (individualTrade instanceof IndividualTrade.ShareBased) {
-            IndividualTrade.ShareBased shareBased = (IndividualTrade.ShareBased) individualTrade;
-            return shareBased.sharesRequested.multiply(shareBased.executionPrice);
-        }
-        throw new IllegalStateException("Can't handle IndividualTrade " + individualTrade.getClass());
+
+        throw new IllegalStateException("Unsupported security: " + security.getClass());
     }
 }

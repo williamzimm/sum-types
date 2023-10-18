@@ -4,20 +4,25 @@ import java.math.BigDecimal;
 
 public class Jdk17Example {
 
-    sealed interface IndividualTrade {
+    private sealed interface Security {
 
-        record AmountBased(BigDecimal amountRequested) implements IndividualTrade {}
+        record ExchangeListed(String tickerSymbol, Exchange primaryExchange) implements Security {}
 
-        record ShareBased(BigDecimal sharesRequested, BigDecimal executionPrice) implements IndividualTrade {}
+        record MutualFund(Cusip cusip) implements Security {}
     }
 
-    public static BigDecimal calculateNotionalValue(IndividualTrade individualTrade) {
-        if (individualTrade instanceof IndividualTrade.AmountBased amountBased) {
-            return amountBased.amountRequested;
+    public BigDecimal getPrice(Security security) {
+        if (security instanceof Security.ExchangeListed exchangeListed) {
+
+            return IntradayPriceRetriever.retrieveIntradayPrice(
+                    exchangeListed.tickerSymbol(),
+                    exchangeListed.primaryExchange()
+            );
+        } else if (security instanceof Security.MutualFund mutualFund) {
+
+            return MutualFundPriceRetriever.retrieveClosingPrice(mutualFund.cusip());
         }
-        else if (individualTrade instanceof IndividualTrade.ShareBased shareBased) {
-            return shareBased.sharesRequested.multiply(shareBased.executionPrice);
-        }
-        throw new IllegalStateException("Can't handle IndividualTrade " + individualTrade.getClass());
+
+        throw new IllegalStateException("Unsupported security: " + security.getClass());
     }
 }
